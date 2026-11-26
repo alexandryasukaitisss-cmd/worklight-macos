@@ -5,6 +5,7 @@ import WorkLightCore
 struct SettingsView: View {
     @State var draft: LampSettings
     @State var hasStoredToken: Bool
+    @ObservedObject var updater: GitHubCommitUpdater
     @State private var tokenInput: String = ""
     @State private var tokenError: String?
 
@@ -89,6 +90,11 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.vertical, 6)
+            }
+
+            GroupBox("Updates") {
+                CommitUpdateRowView(updater: updater)
+                    .padding(.vertical, 4)
             }
 
             HStack {

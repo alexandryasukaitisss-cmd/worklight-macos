@@ -19,6 +19,11 @@ public final class MenuBarDelegate: NSObject, NSApplicationDelegate {
     private let lamp: LampController
     private let tokenStore: TokenStore
     private let callMonitor: CallActivitySource
+    private let updater = GitHubCommitUpdater(
+        repository: "alexandryasukaitisss-cmd/worklight-macos",
+        bundleName: "WorkLight.app",
+        executableName: "WorkLight"
+    )
     private lazy var item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var settingsWindow: NSWindow?
     private var pollingTask: Task<Void, Never>?
@@ -176,6 +181,11 @@ public final class MenuBarDelegate: NSObject, NSApplicationDelegate {
         }
         menu.addItem(.separator())
         menu.addItem(menuItem("Settings…", #selector(showSettings), key: ","))
+        if let candidate = updater.availableUpdate {
+            menu.addItem(menuItem("Update to \(candidate.shortSHA)…", #selector(installUpdate)))
+        } else {
+            menu.addItem(menuItem("Check for Updates…", #selector(checkUpdates)))
+        }
         menu.addItem(menuItem("Refresh Status", #selector(refresh)))
         menu.addItem(.separator())
         menu.addItem(menuItem("Quit WorkLight", #selector(quit), key: "q"))
@@ -197,6 +207,15 @@ public final class MenuBarDelegate: NSObject, NSApplicationDelegate {
         Task { await lamp.refresh() }
     }
 
+    @objc private func checkUpdates() {
+        updater.checkForUpdates(manual: true)
+        showSettings()
+    }
+
+    @objc private func installUpdate() {
+        updater.installAvailableUpdate()
+    }
+
     @objc private func showSettings() {
         if let settingsWindow, settingsWindow.isVisible {
             NSApp.activate()
@@ -206,6 +225,7 @@ public final class MenuBarDelegate: NSObject, NSApplicationDelegate {
         let view = SettingsView(
             draft: lamp.settings,
             hasStoredToken: tokenStore.hasToken(),
+            updater: updater,
             save: { [weak self] updatedSettings, newToken in
                 guard let self else { return nil }
                 if let newToken, !newToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
