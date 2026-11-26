@@ -31,7 +31,12 @@ brew install --cask alexandryasukaitisss-cmd/tap/worklight
 
 ### Прямое скачивание
 
-Скачайте `WorkLight-0.1.0-macos-arm64.zip` из [GitHub Releases](https://github.com/alexandryasukaitisss-cmd/worklight-macos/releases) и перенесите `WorkLight.app` в `/Applications`.
+Скачайте `WorkLight-0.1.0-macos-arm64.zip` из [GitHub Releases](https://github.com/alexandryasukaitisss-cmd/worklight-macos/releases), распакуйте и перенесите `WorkLight.app` в `/Applications`.
+
+> [!NOTE]
+> **Первый запуск на macOS (без платной нотаризации Apple):** Готовые сборки подписаны ad-hoc, поэтому при первом запуске Gatekeeper покажет предупреждение *«Apple не удалось подтвердить, что файл «WorkLight» не содержит вредоносного ПО»*. Чтобы открыть один раз:
+> - **Без Терминала:** нажмите **«Готово»** (не *«Переместить в Корзину»*), откройте **Системные настройки → Конфиденциальность и безопасность**, прокрутите до блока **Безопасность** и нажмите **«Всё равно открыть»**.
+> - **Или через Терминал:** `xattr -dr com.apple.quarantine /Applications/WorkLight.app`
 
 ### Сборка из исходников (macOS 14+, Swift 6)
 
