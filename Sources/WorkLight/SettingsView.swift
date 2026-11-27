@@ -14,12 +14,13 @@ struct SettingsView: View {
     let cancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GroupBox("Home Assistant") {
-                VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            Form {
+                Section("Home Assistant") {
                     LabeledContent("Base URL") {
                         TextField("http://homeassistant.local:8123", text: $draft.endpoint.baseURLString)
                             .textFieldStyle(.roundedBorder)
+                            .monospacedDigit()
                     }
                     LabeledContent("Light Entity") {
                         TextField("light.office_lamp", text: $draft.endpoint.entityID)
@@ -42,60 +43,60 @@ struct SettingsView: View {
                         }
                     }
                     Toggle("Use Yeelight / Xiaomi Miot Color & Day effects", isOn: $draft.endpoint.useMiotEffects)
-                        .font(.callout)
                 }
-                .padding(.vertical, 6)
-            }
 
-            GroupBox("On-Air Signals") {
-                VStack(spacing: 10) {
+                Section("On-Air Signals") {
                     slider("Busy (Red)", icon: "minus.circle.fill", tint: .red, value: $draft.busyBrightness, range: 1...100, unit: "%")
                     slider("Available", icon: "checkmark.circle.fill", tint: .green, value: $draft.freeBrightness, range: 1...100, unit: "%")
                 }
-                .padding(.vertical, 6)
-            }
 
-            GroupBox("Automatic Call Detection (Local)") {
-                VStack(alignment: .leading, spacing: 8) {
+                Section {
                     Toggle("Switch to Busy automatically when microphone is active", isOn: $draft.autoBusyOnMicrophone)
                     if draft.autoBusyOnMicrophone {
-                        Picker("After call ends", selection: $draft.callReturnBehavior) {
-                            ForEach(CallReturnBehavior.allCases, id: \.self) { behavior in
-                                Text(behavior.title).tag(behavior)
+                        LabeledContent("After call ends") {
+                            Picker("After call ends", selection: $draft.callReturnBehavior) {
+                                ForEach(CallReturnBehavior.allCases, id: \.self) { behavior in
+                                    Text(behavior.title).tag(behavior)
+                                }
                             }
+                            .labelsHidden()
                         }
+                    }
+                } header: {
+                    Text("Automatic Call Detection (Local)")
+                } footer: {
+                    if draft.autoBusyOnMicrophone {
                         Text("Reads CoreAudio hardware active state only — no audio is captured and no microphone permission is required.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
-                .padding(.vertical, 6)
-            }
 
-            GroupBox("Normal Light") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Picker("Mode", selection: $draft.normalStyle) {
-                        Text("White").tag(LampSettings.NormalStyle.white)
-                        Text("Color").tag(LampSettings.NormalStyle.color)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: draft.normalStyle) { _, style in
-                        if style == .white && draft.normalRGB == 0 { draft.normalRGB = RGB.violet.packed }
+                Section("Normal Light") {
+                    LabeledContent("Mode") {
+                        Picker("Mode", selection: $draft.normalStyle) {
+                            Text("White").tag(LampSettings.NormalStyle.white)
+                            Text("Color").tag(LampSettings.NormalStyle.color)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .onChange(of: draft.normalStyle) { _, style in
+                            if style == .white && draft.normalRGB == 0 { draft.normalRGB = RGB.violet.packed }
+                        }
                     }
                     slider("Brightness", icon: "sun.max", value: $draft.normalBrightness, range: 1...100, unit: "%")
                     if draft.normalStyle == .white {
-                        slider("Color Temp", icon: "thermometer.medium", value: $draft.kelvin, range: 1700...6500, step: 100, unit: " K")
+                        slider("Color Temp", icon: "thermometer.medium", value: $draft.kelvin, range: 1700...6500, step: 1, unit: " K")
                     } else {
                         ColorPicker("Lamp Color", selection: color, supportsOpacity: false)
                     }
                 }
-                .padding(.vertical, 6)
-            }
 
-            GroupBox("Updates") {
-                CommitUpdateRowView(updater: updater)
-                    .padding(.vertical, 4)
+                Section("Updates") {
+                    CommitUpdateRowView(updater: updater)
+                }
             }
+            .formStyle(.grouped)
 
             HStack {
                 if let validationMessage {
@@ -112,9 +113,10 @@ struct SettingsView: View {
                 .keyboardShortcut(.defaultAction)
                 .disabled(!canSave)
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
         }
-        .padding(20)
-        .frame(width: 500)
+        .frame(width: 520, height: 610)
     }
 
     private var canSave: Bool {
@@ -133,23 +135,37 @@ struct SettingsView: View {
         _ title: String, icon: String, tint: Color = .secondary, value: Binding<Int>,
         range: ClosedRange<Int>, step: Double = 1, unit: String
     ) -> some View {
-        let binding = Binding<Double>(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0.rounded()) })
-        return HStack(spacing: 10) {
+        let doubleBinding = Binding<Double>(
+            get: { Double(value.wrappedValue) },
+            set: { value.wrappedValue = min(max(Int($0.rounded()), range.lowerBound), range.upperBound) }
+        )
+        let intBinding = Binding<Int>(
+            get: { value.wrappedValue },
+            set: { value.wrappedValue = min(max($0, range.lowerBound), range.upperBound) }
+        )
+        return HStack(spacing: 8) {
             Image(systemName: icon)
                 .foregroundStyle(tint)
                 .frame(width: 16)
                 .accessibilityHidden(true)
-            Text(title).frame(width: 96, alignment: .leading).accessibilityHidden(true)
-            Slider(value: binding, in: Double(range.lowerBound)...Double(range.upperBound), step: step) {
+            Text(title)
+                .frame(width: 92, alignment: .leading)
+            Slider(value: doubleBinding, in: Double(range.lowerBound)...Double(range.upperBound), step: step) {
                 Text(title)
             }
             .labelsHidden()
             .accessibilityValue("\(value.wrappedValue)\(unit)")
-            Text("\(value.wrappedValue)\(unit)")
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(width: 60, alignment: .trailing)
-                .accessibilityHidden(true)
+            HStack(spacing: 3) {
+                TextField(title, value: intBinding, format: .number.grouping(.never))
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .monospacedDigit()
+                    .frame(width: range.upperBound > 999 ? 56 : 44)
+                Text(unit.trimmingCharacters(in: .whitespaces))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14, alignment: .leading)
+            }
         }
     }
 

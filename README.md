@@ -31,7 +31,7 @@ brew install --cask alexandryasukaitisss-cmd/tap/worklight
 
 ### Direct download
 
-Download `WorkLight-0.2.0-macos-arm64.zip` from [GitHub Releases](https://github.com/alexandryasukaitisss-cmd/worklight-macos/releases), unzip, and move `WorkLight.app` into `/Applications`.
+Download `WorkLight-0.2.1-macos-arm64.zip` from [GitHub Releases](https://github.com/alexandryasukaitisss-cmd/worklight-macos/releases), unzip, and move `WorkLight.app` into `/Applications`.
 
 > [!NOTE]
 > **First launch on macOS (not Apple-notarized):** Prebuilt releases are ad-hoc signed, so macOS Gatekeeper will show *"Apple could not verify 'WorkLight' is free of malware"* on first launch. To open it once:
