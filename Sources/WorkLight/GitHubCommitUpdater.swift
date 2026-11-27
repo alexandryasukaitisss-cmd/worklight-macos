@@ -308,12 +308,19 @@ public final class GitHubCommitUpdater: ObservableObject {
                 return
             }
 
-            _ = try? runTool("/usr/bin/xattr", ["-dr", "com.apple.quarantine", extractedApp.path])
+            _ = try? runTool("/usr/bin/xattr", ["-cr", extractedApp.path])
             try runTool("/usr/bin/codesign", ["--verify", "--deep", "--strict", extractedApp.path])
 
             state = .installing("Relaunching…")
             try launchDetachedSwap(stagingDir: stagingDir, extractedApp: extractedApp, targetApp: targetApp)
-            NSApp.terminate(nil)
+            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 1.5) {
+                Darwin.exit(0)
+            }
+            let mainLoop = CFRunLoopGetMain()
+            CFRunLoopPerformBlock(mainLoop, CFRunLoopMode.commonModes.rawValue) {
+                NSApp.terminate(nil)
+            }
+            CFRunLoopWakeUp(mainLoop)
         } catch {
             try? FileManager.default.removeItem(at: stagingDir)
             state = .failed("Update failed: \(error.localizedDescription)")
@@ -351,10 +358,22 @@ public final class GitHubCommitUpdater: ObservableObject {
         STAGING_DIR=\(Self.shellQuote(stagingDir.path))
 
         i=0
-        while kill -0 "$OLD_PID" 2>/dev/null && [ "$i" -lt 150 ]; do
+        while kill -0 "$OLD_PID" 2>/dev/null && [ "$i" -lt 40 ]; do
           sleep 0.1
           i=$((i + 1))
         done
+        if kill -0 "$OLD_PID" 2>/dev/null; then
+          kill -TERM "$OLD_PID" 2>/dev/null || true
+          j=0
+          while kill -0 "$OLD_PID" 2>/dev/null && [ "$j" -lt 20 ]; do
+            sleep 0.1
+            j=$((j + 1))
+          done
+        fi
+        if kill -0 "$OLD_PID" 2>/dev/null; then
+          kill -KILL "$OLD_PID" 2>/dev/null || true
+          sleep 0.2
+        fi
 
         rm -rf "$BACKUP_APP"
         if [ -d "$TARGET_APP" ]; then
@@ -362,9 +381,9 @@ public final class GitHubCommitUpdater: ObservableObject {
         fi
 
         if /usr/bin/ditto "$NEW_APP" "$TARGET_APP"; then
-          /usr/bin/xattr -dr com.apple.quarantine "$TARGET_APP" >/dev/null 2>&1 || true
+          /usr/bin/xattr -cr "$TARGET_APP" >/dev/null 2>&1 || /usr/bin/xattr -dr com.apple.quarantine "$TARGET_APP" >/dev/null 2>&1 || true
           rm -rf "$BACKUP_APP"
-          /usr/bin/open -n "$TARGET_APP"
+          /usr/bin/open -n "$TARGET_APP" || /usr/bin/open "$TARGET_APP"
           rm -rf "$STAGING_DIR"
         else
           if [ -d "$BACKUP_APP" ]; then
